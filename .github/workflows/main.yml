@@ -1,0 +1,66 @@
+name: Build all images
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: build ${{ matrix.img }} ${{ matrix.arch }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        arch:
+         - arm64
+         - amd64
+        img:
+         - full
+         - customizable
+         - nodejs
+         - jruby94
+         - jruby93
+         # - ruby34 # REL: 2024-12-25
+         - ruby33 # EOL: 2027-03-31
+         - ruby32 # EOL: 2026-03-31
+         - ruby31 # EOL: 2025-03-31
+         # https://www.ruby-lang.org/en/downloads/branches/
+         - python313 # EOL: 2029-10-07
+         - python312 # EOL: 2028-10-02
+         - python311 # EOL: 2027-10-24
+         - python310 # EOL: 2026-10-04
+         - python39 # EOL: 2025-10-05
+         - python38 # EOL: 2024-10-14
+         # https://devguide.python.org/versions/
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Purge containers
+        run: 'docker kill $(docker ps -q) || exit 0'
+      - name: Enable docker multiarch
+        run: 'docker run --privileged --rm tonistiigi/binfmt --install all'
+      - name: "Run make build_${{ matrix.img }}"
+        run: "make build_${{ matrix.img }}"
+        env:
+          BUILD_AMD64: ${{ fromJSON('[0, 1]')[matrix.arch == 'amd64'] }}
+          BUILD_ARM64: ${{ fromJSON('[0, 1]')[matrix.arch == 'arm64'] }}
+      - name: Log in to the Container registry
+        if: ${{ github.event.pull_request.merged || github.actor == 'CamJN' }}
+        uses: docker/login-action@v3
+        id: login
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push to github container registry
+        if: ${{ success() && steps.login.conclusion != 'skipped' }}
+        run: "make push_${{ matrix.img }}"
+        env:
+          BUILD_AMD64: ${{ fromJSON('[0, 1]')[matrix.arch == 'amd64'] }}
+          BUILD_ARM64: ${{ fromJSON('[0, 1]')[matrix.arch == 'arm64'] }}
