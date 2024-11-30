@@ -911,5 +911,3 @@ Thanks for your interest in contributing! There are many ways to contribute to t
 
 
 [<img src="https://www.phusion.nl/images/mark_logotype.svg">](http://www.phusion.nl/)
-
-Please enjoy passenger-docker, a product by [Phusion](http://www.phusion.nl/). :-)
